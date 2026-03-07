@@ -3,7 +3,7 @@
 import asyncio
 from playwright.async_api import Page
 from llm_council.config import PROVIDERS
-from llm_council.browser.base import LLMPage
+from llm_council.browser.base import LLMPage, LLMResponse
 
 
 class ClaudePage(LLMPage):
@@ -28,3 +28,25 @@ class ClaudePage(LLMPage):
         await self.page.evaluate("(text) => document.execCommand('insertText', false, text)", text)
         await asyncio.sleep(0.5)
         await self.page.keyboard.press("Enter")
+
+    async def _extract_last_response(self) -> LLMResponse:
+        """Extract response excluding the thinking/deliberation block."""
+        try:
+            # Prefer .standard-markdown inside the response (excludes thinking block)
+            result = await self.page.evaluate("""() => {
+                const responses = document.querySelectorAll('.font-claude-response');
+                if (!responses.length) return null;
+                const last = responses[responses.length - 1];
+                // Try the markdown content first (excludes thinking block)
+                const md = last.querySelector('.standard-markdown');
+                if (md && md.innerText.trim().length > 0) {
+                    return { text: md.innerText.trim(), html: md.innerHTML.trim() };
+                }
+                // Fallback to full response
+                return { text: last.innerText.trim(), html: last.innerHTML.trim() };
+            }""")
+            if result:
+                return LLMResponse(text=result["text"], html=result["html"])
+            return LLMResponse(text="", html="")
+        except Exception:
+            return LLMResponse(text="", html="")

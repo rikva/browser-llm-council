@@ -412,6 +412,39 @@ select:focus {
   letter-spacing: 0.04em;
 }
 
+.panel-header .collapse-toggle {
+  margin-left: 0.4rem;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: transform 0.3s;
+  user-select: none;
+}
+
+.provider-panel.collapsed .panel-header .collapse-toggle {
+  transform: rotate(-90deg);
+}
+
+.provider-panel .panel-body {
+  transition: max-height 0.4s ease, opacity 0.3s ease;
+  max-height: 1000px;
+  opacity: 1;
+  overflow: hidden;
+}
+
+.provider-panel.collapsed .panel-body {
+  max-height: 0;
+  opacity: 0;
+}
+
+.panels-grid.collapsed-all .provider-panel {
+  cursor: pointer;
+}
+
+.panel-header {
+  cursor: pointer;
+}
+
 .panel-header .panel-status {
   margin-left: auto;
   font-size: 0.65rem;
@@ -504,11 +537,16 @@ select:focus {
 .response-text::-webkit-scrollbar-track { background: transparent; }
 .response-text::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 2px; }
 
-.response-text.streaming::after {
+.response-text.streaming::after,
+.synthesis-text.streaming::after {
   content: '\2588';
   animation: blink 0.8s step-end infinite;
-  color: var(--provider-color);
+  color: var(--accent-amber);
   margin-left: 2px;
+}
+
+.response-text.streaming::after {
+  color: var(--provider-color);
 }
 
 @keyframes blink {
@@ -779,9 +817,10 @@ function createPanels(providers) {
     panel.dataset.provider = p;
     panel.style.animationDelay = `${i * 0.08}s`;
     panel.innerHTML = `
-      <div class="panel-header">
+      <div class="panel-header" onclick="this.parentElement.classList.toggle('collapsed')">
         <span class="provider-dot"></span>
         <span class="provider-label">${DISPLAY_NAMES[p]}</span>
+        <span class="collapse-toggle">&#9660;</span>
         <span class="panel-status" id="status-${p}"></span>
       </div>
       <div class="panel-body">
@@ -819,6 +858,10 @@ function setStage(stage, status) {
   } else if (status === 'complete') {
     el.classList.remove('active');
     el.classList.add('complete');
+    // Collapse panels when stage 2 completes to focus on synthesis
+    if (stage === 2) {
+      $$('.provider-panel').forEach(p => p.classList.add('collapsed'));
+    }
   }
 }
 
@@ -842,6 +885,16 @@ function setProviderStatus(provider, stage, status, text, html) {
 }
 
 function setPartialResponse(provider, stage, html) {
+  // Stage 3 streams into the synthesis section
+  if (stage === 3) {
+    synthesisSection.classList.add('visible');
+    if (html) {
+      synthesisText.innerHTML = html;
+    }
+    synthesisText.classList.add('streaming');
+    synthesisText.scrollTop = synthesisText.scrollHeight;
+    return;
+  }
   const respEl = $(`#resp-${provider}-${stage}`);
   if (respEl) {
     if (html) {
@@ -953,6 +1006,7 @@ function submit() {
 
       case 'final':
         synthesisSection.classList.add('visible');
+        synthesisText.classList.remove('streaming');
         if (msg.html) {
           synthesisText.innerHTML = msg.html;
         } else {
