@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "llm-council"
+version = "0.1.0"
+description = "LLM Council - Multiple LLMs answer, peer-review, and synthesize via browser automation"
+requires-python = ">=3.11"
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.27",
+    "playwright>=1.41",
+    "websockets>=12.0",
+]
+
+[project.scripts]
+llm-council = "llm_council.main:main"

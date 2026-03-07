@@ -1,0 +1,1001 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LLM Council</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=DM+Mono:wght@300;400;500&family=Instrument+Serif:ital@0;1&display=swap');
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+:root {
+  --bg-deep: #0a0a0c;
+  --bg-surface: #111114;
+  --bg-elevated: #1a1a1f;
+  --bg-hover: #222228;
+  --border-subtle: #2a2a32;
+  --border-active: #3d3d48;
+  --text-primary: #e8e6e3;
+  --text-secondary: #8a8a95;
+  --text-muted: #55555f;
+  --accent-amber: #d4a853;
+  --accent-amber-dim: #d4a85320;
+  --accent-amber-glow: #d4a85340;
+  --chatgpt-color: #74aa9c;
+  --claude-color: #d4a076;
+  --gemini-color: #8b9cf7;
+  --error-color: #e85d5d;
+  --stage-complete: #5cb85c;
+  --radius: 8px;
+  --radius-lg: 14px;
+}
+
+html { font-size: 15px; }
+
+body {
+  background: var(--bg-deep);
+  color: var(--text-primary);
+  font-family: 'DM Mono', monospace;
+  font-weight: 300;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Grain overlay */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+  pointer-events: none;
+  z-index: 9999;
+}
+
+/* ── Header ── */
+.header {
+  padding: 3rem 2rem 1rem;
+  text-align: center;
+  position: relative;
+}
+
+.header h1 {
+  font-family: 'Instrument Serif', serif;
+  font-weight: 400;
+  font-size: 3.2rem;
+  letter-spacing: -0.02em;
+  color: var(--text-primary);
+  margin-bottom: 0.25rem;
+}
+
+.header h1 span {
+  color: var(--accent-amber);
+  font-style: italic;
+}
+
+.header .subtitle {
+  font-size: 0.75rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.2em;
+}
+
+/* ── Main container ── */
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 2rem 4rem;
+}
+
+/* ── Input section ── */
+.input-section {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  margin-bottom: 2rem;
+  position: relative;
+  overflow: hidden;
+}
+
+.input-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent-amber-dim), transparent);
+}
+
+.question-area {
+  margin-bottom: 1.5rem;
+}
+
+.question-area label {
+  display: block;
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--text-muted);
+  margin-bottom: 0.6rem;
+}
+
+textarea {
+  width: 100%;
+  min-height: 100px;
+  background: var(--bg-deep);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  padding: 1rem;
+  color: var(--text-primary);
+  font-family: 'DM Mono', monospace;
+  font-weight: 300;
+  font-size: 0.93rem;
+  line-height: 1.6;
+  resize: vertical;
+  transition: border-color 0.2s;
+}
+
+textarea:focus {
+  outline: none;
+  border-color: var(--accent-amber);
+  box-shadow: 0 0 0 3px var(--accent-amber-dim);
+}
+
+textarea::placeholder { color: var(--text-muted); }
+
+.controls-row {
+  display: flex;
+  align-items: flex-end;
+  gap: 2rem;
+  flex-wrap: wrap;
+}
+
+.control-group {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.control-group label.group-label {
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  color: var(--text-muted);
+}
+
+.checkbox-group {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.checkbox-item {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  cursor: pointer;
+  padding: 0.4rem 0.75rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.checkbox-item:hover { border-color: var(--border-active); }
+
+.checkbox-item input[type="checkbox"] { display: none; }
+
+.checkbox-item .check-indicator {
+  width: 14px;
+  height: 14px;
+  border: 1.5px solid var(--text-muted);
+  border-radius: 3px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
+  flex-shrink: 0;
+}
+
+.checkbox-item .check-indicator::after {
+  content: '';
+  width: 8px;
+  height: 8px;
+  border-radius: 2px;
+  background: transparent;
+  transition: background 0.2s;
+}
+
+.checkbox-item input:checked + .check-indicator {
+  border-color: var(--accent-amber);
+}
+
+.checkbox-item input:checked + .check-indicator::after {
+  background: var(--accent-amber);
+}
+
+.checkbox-item .provider-name {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  transition: color 0.2s;
+}
+
+.checkbox-item input:checked ~ .provider-name { color: var(--text-primary); }
+
+.checkbox-item[data-provider="chatgpt"] input:checked + .check-indicator { border-color: var(--chatgpt-color); }
+.checkbox-item[data-provider="chatgpt"] input:checked + .check-indicator::after { background: var(--chatgpt-color); }
+.checkbox-item[data-provider="claude"] input:checked + .check-indicator { border-color: var(--claude-color); }
+.checkbox-item[data-provider="claude"] input:checked + .check-indicator::after { background: var(--claude-color); }
+.checkbox-item[data-provider="gemini"] input:checked + .check-indicator { border-color: var(--gemini-color); }
+.checkbox-item[data-provider="gemini"] input:checked + .check-indicator::after { background: var(--gemini-color); }
+
+select {
+  background: var(--bg-deep);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  padding: 0.5rem 2rem 0.5rem 0.75rem;
+  color: var(--text-primary);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.8rem;
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%238a8a95' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 0.6rem center;
+  transition: border-color 0.2s;
+}
+
+select:focus {
+  outline: none;
+  border-color: var(--accent-amber);
+}
+
+.submit-btn {
+  margin-left: auto;
+  padding: 0.6rem 2rem;
+  background: transparent;
+  border: 1px solid var(--accent-amber);
+  border-radius: var(--radius);
+  color: var(--accent-amber);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.8rem;
+  font-weight: 500;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  cursor: pointer;
+  transition: all 0.25s;
+  position: relative;
+  overflow: hidden;
+}
+
+.submit-btn::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: var(--accent-amber);
+  opacity: 0;
+  transition: opacity 0.25s;
+}
+
+.submit-btn:hover::before { opacity: 0.1; }
+
+.submit-btn:hover {
+  box-shadow: 0 0 20px var(--accent-amber-dim);
+}
+
+.submit-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
+.submit-btn:disabled::before { opacity: 0; }
+
+/* ── Stage progress ── */
+.stage-progress {
+  display: flex;
+  justify-content: center;
+  gap: 1px;
+  margin-bottom: 2rem;
+  opacity: 0;
+  transition: opacity 0.4s;
+}
+
+.stage-progress.visible { opacity: 1; }
+
+.stage-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.6rem 1.2rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  font-size: 0.7rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  transition: all 0.3s;
+}
+
+.stage-indicator:first-child { border-radius: var(--radius) 0 0 var(--radius); }
+.stage-indicator:last-child { border-radius: 0 var(--radius) var(--radius) 0; }
+
+.stage-indicator .dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--text-muted);
+  transition: all 0.3s;
+}
+
+.stage-indicator.active {
+  color: var(--accent-amber);
+  border-color: var(--accent-amber-dim);
+  background: var(--bg-elevated);
+}
+
+.stage-indicator.active .dot {
+  background: var(--accent-amber);
+  box-shadow: 0 0 8px var(--accent-amber-glow);
+  animation: pulse 1.5s ease-in-out infinite;
+}
+
+.stage-indicator.complete { color: var(--stage-complete); }
+.stage-indicator.complete .dot {
+  background: var(--stage-complete);
+  box-shadow: none;
+  animation: none;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+/* ── Provider panels grid ── */
+.panels-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(360px, 1fr));
+  gap: 1rem;
+  margin-bottom: 2rem;
+}
+
+.provider-panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  animation: panelIn 0.4s ease-out both;
+}
+
+@keyframes panelIn {
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.provider-panel[data-provider="chatgpt"] { --provider-color: var(--chatgpt-color); }
+.provider-panel[data-provider="claude"] { --provider-color: var(--claude-color); }
+.provider-panel[data-provider="gemini"] { --provider-color: var(--gemini-color); }
+
+.panel-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border-subtle);
+  position: relative;
+}
+
+.panel-header::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: var(--provider-color);
+  opacity: 0.6;
+}
+
+.panel-header .provider-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--provider-color);
+}
+
+.panel-header .provider-label {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--text-primary);
+  letter-spacing: 0.04em;
+}
+
+.panel-header .panel-status {
+  margin-left: auto;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: var(--text-muted);
+  transition: color 0.2s;
+}
+
+.panel-header .panel-status.sending { color: var(--accent-amber); }
+.panel-header .panel-status.waiting { color: var(--provider-color); }
+.panel-header .panel-status.done { color: var(--stage-complete); }
+.panel-header .panel-status.error { color: var(--error-color); }
+
+.panel-body { padding: 0; }
+
+.stage-section {
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.stage-section:last-child { border-bottom: none; }
+
+.stage-section .stage-label {
+  font-size: 0.6rem;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: var(--text-muted);
+  margin-bottom: 0.6rem;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.stage-section .stage-label .stage-num {
+  background: var(--bg-deep);
+  padding: 0.15rem 0.4rem;
+  border-radius: 3px;
+  font-size: 0.58rem;
+}
+
+.response-text {
+  font-size: 0.82rem;
+  line-height: 1.65;
+  color: var(--text-secondary);
+  word-break: break-word;
+  max-height: 400px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-subtle) transparent;
+}
+
+.response-text p, .synthesis-text p { margin: 0.4em 0; }
+.response-text strong, .response-text b, .synthesis-text strong, .synthesis-text b { color: var(--text-primary); font-weight: 500; }
+.response-text em, .response-text i, .synthesis-text em, .synthesis-text i { font-style: italic; }
+.response-text h1, .response-text h2, .response-text h3, .response-text h4,
+.synthesis-text h1, .synthesis-text h2, .synthesis-text h3, .synthesis-text h4 {
+  color: var(--text-primary); font-weight: 500; margin: 0.8em 0 0.3em;
+}
+.response-text h1 { font-size: 1.1em; }
+.response-text h2 { font-size: 1em; }
+.response-text h3 { font-size: 0.95em; }
+.response-text ul, .response-text ol, .synthesis-text ul, .synthesis-text ol { padding-left: 1.5em; margin: 0.4em 0; }
+.response-text li, .synthesis-text li { margin: 0.2em 0; }
+.response-text code, .synthesis-text code {
+  background: var(--bg-deep); padding: 0.1em 0.35em; border-radius: 3px;
+  font-size: 0.9em;
+}
+.response-text pre, .synthesis-text pre {
+  background: var(--bg-deep); padding: 0.8em; border-radius: var(--radius);
+  overflow-x: auto; margin: 0.5em 0;
+}
+.response-text pre code, .synthesis-text pre code { background: none; padding: 0; }
+.response-text table, .synthesis-text table {
+  border-collapse: collapse; width: 100%; margin: 0.5em 0;
+  font-size: 0.9em;
+}
+.response-text th, .response-text td, .synthesis-text th, .synthesis-text td {
+  border: 1px solid var(--border-subtle); padding: 0.4em 0.6em; text-align: left;
+}
+.response-text th, .synthesis-text th { background: var(--bg-deep); color: var(--text-primary); font-weight: 500; }
+.response-text blockquote, .synthesis-text blockquote {
+  border-left: 2px solid var(--border-active); padding-left: 0.8em;
+  margin: 0.5em 0; color: var(--text-muted);
+}
+.response-text a, .synthesis-text a { color: var(--accent-amber); text-decoration: none; }
+.response-text hr, .synthesis-text hr { border: none; border-top: 1px solid var(--border-subtle); margin: 0.8em 0; }
+
+.response-text::-webkit-scrollbar { width: 4px; }
+.response-text::-webkit-scrollbar-track { background: transparent; }
+.response-text::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 2px; }
+
+.response-text.streaming::after {
+  content: '\2588';
+  animation: blink 0.8s step-end infinite;
+  color: var(--provider-color);
+  margin-left: 2px;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+.response-text:empty::before {
+  content: 'Waiting...';
+  color: var(--text-muted);
+  font-style: italic;
+}
+
+/* ── Final synthesis ── */
+.synthesis-section {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-lg);
+  padding: 2rem;
+  position: relative;
+  overflow: hidden;
+  display: none;
+}
+
+.synthesis-section.visible { display: block; animation: panelIn 0.5s ease-out; }
+
+.synthesis-section::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background: linear-gradient(90deg, var(--chatgpt-color), var(--claude-color), var(--gemini-color));
+}
+
+.synthesis-header {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  margin-bottom: 1.25rem;
+}
+
+.synthesis-header .crown {
+  font-size: 1.1rem;
+  line-height: 1;
+}
+
+.synthesis-header h2 {
+  font-family: 'Instrument Serif', serif;
+  font-weight: 400;
+  font-size: 1.5rem;
+  color: var(--text-primary);
+}
+
+.synthesis-header .chairman-badge {
+  margin-left: auto;
+  font-size: 0.65rem;
+  text-transform: uppercase;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
+  padding: 0.3rem 0.7rem;
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+}
+
+.synthesis-text {
+  font-size: 0.9rem;
+  line-height: 1.7;
+  color: var(--text-secondary);
+  word-break: break-word;
+  max-height: 600px;
+  overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-subtle) transparent;
+}
+
+.synthesis-text::-webkit-scrollbar { width: 4px; }
+.synthesis-text::-webkit-scrollbar-track { background: transparent; }
+.synthesis-text::-webkit-scrollbar-thumb { background: var(--border-subtle); border-radius: 2px; }
+
+/* ── Error toast ── */
+.error-log {
+  position: fixed;
+  bottom: 1.5rem;
+  right: 1.5rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  z-index: 100;
+  pointer-events: none;
+}
+
+.error-toast {
+  background: var(--bg-elevated);
+  border: 1px solid var(--error-color);
+  border-left: 3px solid var(--error-color);
+  border-radius: var(--radius);
+  padding: 0.75rem 1rem;
+  font-size: 0.75rem;
+  color: var(--error-color);
+  max-width: 400px;
+  pointer-events: auto;
+  animation: toastIn 0.3s ease-out;
+}
+
+@keyframes toastIn {
+  from { opacity: 0; transform: translateX(20px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.retry-toast {
+  pointer-events: auto;
+}
+
+.retry-btn {
+  padding: 0.35rem 0.8rem;
+  border: 1px solid var(--accent-amber);
+  border-radius: var(--radius);
+  background: transparent;
+  color: var(--accent-amber);
+  font-family: 'DM Mono', monospace;
+  font-size: 0.7rem;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.retry-btn:hover {
+  background: var(--accent-amber-dim);
+}
+
+.retry-btn.skip {
+  border-color: var(--text-muted);
+  color: var(--text-muted);
+}
+
+.retry-btn.skip:hover {
+  background: var(--bg-hover);
+}
+
+/* ── Responsive ── */
+@media (max-width: 900px) {
+  .container { padding: 0 1rem 3rem; }
+  .header h1 { font-size: 2.2rem; }
+  .controls-row { flex-direction: column; align-items: stretch; gap: 1rem; }
+  .submit-btn { margin-left: 0; }
+  .panels-grid { grid-template-columns: 1fr; }
+}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>LLM <span>Council</span></h1>
+  <p class="subtitle">Collective intelligence through deliberation</p>
+</div>
+
+<div class="container">
+
+  <!-- Input Section -->
+  <div class="input-section" id="inputSection">
+    <div class="question-area">
+      <label for="question">Your question</label>
+      <textarea id="question" placeholder="Ask something worth deliberating..."></textarea>
+    </div>
+    <div class="controls-row">
+      <div class="control-group">
+        <label class="group-label">Council members</label>
+        <div class="checkbox-group" id="providerCheckboxes">
+          <label class="checkbox-item" data-provider="chatgpt">
+            <input type="checkbox" value="chatgpt" checked>
+            <span class="check-indicator"></span>
+            <span class="provider-name">ChatGPT</span>
+          </label>
+          <label class="checkbox-item" data-provider="claude">
+            <input type="checkbox" value="claude" checked>
+            <span class="check-indicator"></span>
+            <span class="provider-name">Claude</span>
+          </label>
+          <label class="checkbox-item" data-provider="gemini">
+            <input type="checkbox" value="gemini" checked>
+            <span class="check-indicator"></span>
+            <span class="provider-name">Gemini</span>
+          </label>
+        </div>
+      </div>
+      <div class="control-group">
+        <label class="group-label">Chairman</label>
+        <select id="chairmanSelect">
+          <option value="chatgpt">ChatGPT</option>
+          <option value="claude" selected>Claude</option>
+          <option value="gemini">Gemini</option>
+        </select>
+      </div>
+      <button class="submit-btn" id="submitBtn">Convene Council</button>
+    </div>
+  </div>
+
+  <!-- Stage Progress -->
+  <div class="stage-progress" id="stageProgress">
+    <div class="stage-indicator" data-stage="1">
+      <span class="dot"></span>
+      <span>Initial Responses</span>
+    </div>
+    <div class="stage-indicator" data-stage="2">
+      <span class="dot"></span>
+      <span>Peer Review</span>
+    </div>
+    <div class="stage-indicator" data-stage="3">
+      <span class="dot"></span>
+      <span>Synthesis</span>
+    </div>
+  </div>
+
+  <!-- Provider Panels -->
+  <div class="panels-grid" id="panelsGrid"></div>
+
+  <!-- Final Synthesis -->
+  <div class="synthesis-section" id="synthesisSection">
+    <div class="synthesis-header">
+      <span class="crown">&#9813;</span>
+      <h2>Council Synthesis</h2>
+      <span class="chairman-badge" id="chairmanBadge">Chairman: Claude</span>
+    </div>
+    <div class="synthesis-text" id="synthesisText"></div>
+  </div>
+
+</div>
+
+<div class="error-log" id="errorLog"></div>
+
+<script>
+const DISPLAY_NAMES = { chatgpt: 'ChatGPT', claude: 'Claude', gemini: 'Gemini' };
+
+const $ = (sel) => document.querySelector(sel);
+const $$ = (sel) => document.querySelectorAll(sel);
+
+const questionEl = $('#question');
+const submitBtn = $('#submitBtn');
+const panelsGrid = $('#panelsGrid');
+const stageProgress = $('#stageProgress');
+const synthesisSection = $('#synthesisSection');
+const synthesisText = $('#synthesisText');
+const chairmanBadge = $('#chairmanBadge');
+const chairmanSelect = $('#chairmanSelect');
+const errorLog = $('#errorLog');
+
+let ws = null;
+let running = false;
+
+function getSelectedProviders() {
+  return [...$$('#providerCheckboxes input:checked')].map(cb => cb.value);
+}
+
+function setRunning(state) {
+  running = state;
+  submitBtn.disabled = state;
+  questionEl.disabled = state;
+  $$('#providerCheckboxes input').forEach(cb => cb.disabled = state);
+  chairmanSelect.disabled = state;
+  submitBtn.textContent = state ? 'Council in session...' : 'Convene Council';
+}
+
+function createPanels(providers) {
+  panelsGrid.innerHTML = '';
+  providers.forEach((p, i) => {
+    const panel = document.createElement('div');
+    panel.className = 'provider-panel';
+    panel.dataset.provider = p;
+    panel.style.animationDelay = `${i * 0.08}s`;
+    panel.innerHTML = `
+      <div class="panel-header">
+        <span class="provider-dot"></span>
+        <span class="provider-label">${DISPLAY_NAMES[p]}</span>
+        <span class="panel-status" id="status-${p}"></span>
+      </div>
+      <div class="panel-body">
+        <div class="stage-section">
+          <div class="stage-label"><span class="stage-num">01</span> Initial Response</div>
+          <div class="response-text" id="resp-${p}-1"></div>
+        </div>
+        <div class="stage-section">
+          <div class="stage-label"><span class="stage-num">02</span> Peer Review</div>
+          <div class="response-text" id="resp-${p}-2"></div>
+        </div>
+      </div>
+    `;
+    panelsGrid.appendChild(panel);
+  });
+}
+
+function resetStages() {
+  $$('.stage-indicator').forEach(el => {
+    el.classList.remove('active', 'complete');
+  });
+  stageProgress.classList.remove('visible');
+  synthesisSection.classList.remove('visible');
+  synthesisText.textContent = '';
+  errorLog.innerHTML = '';
+}
+
+function setStage(stage, status) {
+  stageProgress.classList.add('visible');
+  const el = $(`.stage-indicator[data-stage="${stage}"]`);
+  if (!el) return;
+  if (status === 'starting') {
+    el.classList.add('active');
+    el.classList.remove('complete');
+  } else if (status === 'complete') {
+    el.classList.remove('active');
+    el.classList.add('complete');
+  }
+}
+
+function setProviderStatus(provider, stage, status, text, html) {
+  const statusEl = $(`#status-${provider}`);
+  if (statusEl) {
+    statusEl.textContent = status;
+    statusEl.className = `panel-status ${status}`;
+  }
+  if (html || text) {
+    const respEl = $(`#resp-${provider}-${stage}`);
+    if (respEl) {
+      if (html) {
+        respEl.innerHTML = html;
+      } else {
+        respEl.textContent = text;
+      }
+      respEl.classList.remove('streaming');
+    }
+  }
+}
+
+function setPartialResponse(provider, stage, html) {
+  const respEl = $(`#resp-${provider}-${stage}`);
+  if (respEl) {
+    if (html) {
+      respEl.innerHTML = html;
+    }
+    respEl.classList.add('streaming');
+    respEl.scrollTop = respEl.scrollHeight;
+  }
+}
+
+function showError(provider, message) {
+  const toast = document.createElement('div');
+  toast.className = 'error-toast';
+  toast.textContent = `[${DISPLAY_NAMES[provider] || provider}] ${message}`;
+  errorLog.appendChild(toast);
+  setTimeout(() => toast.remove(), 60000);
+
+  if (provider !== 'council') {
+    const statusEl = $(`#status-${provider}`);
+    if (statusEl) {
+      statusEl.textContent = 'error';
+      statusEl.className = 'panel-status error';
+    }
+  }
+}
+
+function showRetryPrompt(provider, message) {
+  const statusEl = $(`#status-${provider}`);
+  if (statusEl) {
+    statusEl.textContent = 'error';
+    statusEl.className = 'panel-status error';
+  }
+
+  const toast = document.createElement('div');
+  toast.className = 'error-toast retry-toast';
+  toast.innerHTML = `
+    <div style="margin-bottom:0.5rem">[${DISPLAY_NAMES[provider] || provider}] ${message}</div>
+    <div style="display:flex;gap:0.5rem">
+      <button class="retry-btn" data-action="retry">Retry</button>
+      <button class="retry-btn skip" data-action="skip">Skip</button>
+    </div>
+  `;
+  errorLog.appendChild(toast);
+
+  toast.querySelector('[data-action="retry"]').onclick = () => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ action: 'retry' }));
+    }
+    toast.remove();
+    if (statusEl) {
+      statusEl.textContent = 'retrying';
+      statusEl.className = 'panel-status sending';
+    }
+  };
+  toast.querySelector('[data-action="skip"]').onclick = () => {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+      ws.send(JSON.stringify({ action: 'skip' }));
+    }
+    toast.remove();
+  };
+}
+
+function submit() {
+  const question = questionEl.value.trim();
+  if (!question) { questionEl.focus(); return; }
+
+  const providers = getSelectedProviders();
+  const chairman = chairmanSelect.value;
+
+  if (providers.length < 2) {
+    showError('council', 'Select at least 2 council members');
+    return;
+  }
+  if (!providers.includes(chairman)) {
+    showError('council', 'Chairman must be a selected council member');
+    return;
+  }
+
+  resetStages();
+  createPanels(providers);
+  setRunning(true);
+  chairmanBadge.textContent = `Chairman: ${DISPLAY_NAMES[chairman]}`;
+
+  const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+  ws = new WebSocket(`${protocol}//${location.host}/ws`);
+
+  ws.onopen = () => {
+    ws.send(JSON.stringify({ question, providers, chairman }));
+  };
+
+  ws.onmessage = (event) => {
+    const msg = JSON.parse(event.data);
+
+    switch (msg.type) {
+      case 'status':
+        break;
+
+      case 'stage':
+        setStage(msg.stage, msg.status);
+        break;
+
+      case 'provider_status':
+        setProviderStatus(msg.provider, msg.stage, msg.status, msg.text, msg.html);
+        break;
+
+      case 'partial_response':
+        setPartialResponse(msg.provider, msg.stage, msg.html);
+        break;
+
+      case 'final':
+        synthesisSection.classList.add('visible');
+        if (msg.html) {
+          synthesisText.innerHTML = msg.html;
+        } else {
+          synthesisText.textContent = msg.text;
+        }
+        break;
+
+      case 'provider_error':
+        showRetryPrompt(msg.provider, msg.message);
+        break;
+
+      case 'error':
+        showError(msg.provider, msg.message);
+        break;
+    }
+  };
+
+  ws.onclose = () => {
+    setRunning(false);
+  };
+
+  ws.onerror = () => {
+    showError('council', 'WebSocket connection failed. Is the server running?');
+    setRunning(false);
+  };
+}
+
+submitBtn.addEventListener('click', submit);
+questionEl.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter' && e.metaKey && !running) submit();
+});
+
+// Keep chairman dropdown in sync with checkboxes
+$('#providerCheckboxes').addEventListener('change', () => {
+  const selected = getSelectedProviders();
+  [...chairmanSelect.options].forEach(opt => {
+    opt.disabled = !selected.includes(opt.value);
+  });
+  if (!selected.includes(chairmanSelect.value) && selected.length > 0) {
+    chairmanSelect.value = selected[0];
+  }
+});
+</script>
+
+</body>
+</html>
