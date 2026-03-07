@@ -8,6 +8,7 @@ from fastapi import WebSocket
 from llm_council.config import PROVIDERS
 from llm_council.browser.manager import BrowserManager
 from llm_council.browser.base import LLMResponse
+from llm_council import storage
 from llm_council.browser.chatgpt import ChatGPTPage
 from llm_council.browser.claude import ClaudePage
 from llm_council.browser.gemini import GeminiPage
@@ -150,6 +151,10 @@ async def run_council(
         await _send_ws(ws, {"type": "status", "message": "Connecting to browser..."})
         await manager.connect()
 
+        # Create session in storage
+        session_id = storage.create_session(question, providers, chairman)
+        await _send_ws(ws, {"type": "session_id", "session_id": session_id})
+
         # ── Stage 1: Initial Responses ──
         await _send_ws(ws, {"type": "stage", "stage": 1, "status": "starting"})
 
@@ -174,6 +179,10 @@ async def run_council(
             return
 
         await _send_ws(ws, {"type": "stage", "stage": 1, "status": "complete"})
+
+        # Save stage 1 responses
+        for p, resp in responses.items():
+            storage.save_response(session_id, p, 1, resp.text, resp.html)
 
         # Close stage 1 tabs
         for p in providers:
@@ -211,6 +220,10 @@ async def run_council(
 
         await _send_ws(ws, {"type": "stage", "stage": 2, "status": "complete"})
 
+        # Save stage 2 reviews
+        for p, rev in reviews.items():
+            storage.save_response(session_id, p, 2, rev.text, rev.html)
+
         # Close stage 2 tabs
         for p in provider_order:
             await manager.close_provider_tab(p)
@@ -240,6 +253,8 @@ async def run_council(
                 "message": "Chairman synthesis failed.",
             })
             return
+
+        storage.save_synthesis(session_id, final.text, final.html)
 
         await _send_ws(ws, {"type": "final", "text": final.text, "html": final.html, "chairman": chairman})
         await _send_ws(ws, {"type": "stage", "stage": 3, "status": "complete"})

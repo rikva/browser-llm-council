@@ -686,6 +686,69 @@ select:focus {
   background: var(--bg-hover);
 }
 
+/* ── History ── */
+.history-section {
+  margin-bottom: 2rem;
+  display: none;
+}
+
+.history-section.visible { display: block; }
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+.history-item {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.7rem 1rem;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  cursor: pointer;
+  transition: border-color 0.2s, background 0.2s;
+}
+
+.history-item:hover {
+  border-color: var(--border-active);
+  background: var(--bg-elevated);
+}
+
+.history-item .history-question {
+  flex: 1;
+  font-size: 0.82rem;
+  color: var(--text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.history-item .history-meta {
+  font-size: 0.65rem;
+  color: var(--text-muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  white-space: nowrap;
+}
+
+.history-item .history-providers {
+  display: flex;
+  gap: 0.3rem;
+}
+
+.history-item .history-provider-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+}
+
+.history-provider-dot[data-p="chatgpt"] { background: var(--chatgpt-color); }
+.history-provider-dot[data-p="claude"] { background: var(--claude-color); }
+.history-provider-dot[data-p="gemini"] { background: var(--gemini-color); }
+
 /* ── Responsive ── */
 @media (max-width: 900px) {
   .container { padding: 0 1rem 3rem; }
@@ -742,6 +805,12 @@ select:focus {
       </div>
       <button class="submit-btn" id="submitBtn">Convene Council</button>
     </div>
+  </div>
+
+  <!-- History -->
+  <div class="history-section" id="historySection">
+    <label class="group-label" style="margin-bottom:0.6rem;display:block">Previous sessions</label>
+    <div class="history-list" id="historyList"></div>
   </div>
 
   <!-- Stage Progress -->
@@ -976,6 +1045,7 @@ function submit() {
   resetStages();
   createPanels(providers);
   setRunning(true);
+  historySection.classList.remove('visible');
   chairmanBadge.textContent = `Chairman: ${DISPLAY_NAMES[chairman]}`;
 
   const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
@@ -1026,6 +1096,7 @@ function submit() {
 
   ws.onclose = () => {
     setRunning(false);
+    loadHistory();
   };
 
   ws.onerror = () => {
@@ -1049,6 +1120,95 @@ $('#providerCheckboxes').addEventListener('change', () => {
     chairmanSelect.value = selected[0];
   }
 });
+
+// ── History ──
+const historySection = $('#historySection');
+const historyList = $('#historyList');
+
+function formatDate(iso) {
+  const d = new Date(iso);
+  const now = new Date();
+  const diff = now - d;
+  if (diff < 60000) return 'just now';
+  if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`;
+  if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`;
+  return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+}
+
+async function loadHistory() {
+  try {
+    const resp = await fetch('/api/history');
+    const sessions = await resp.json();
+    if (!sessions.length) return;
+    historySection.classList.add('visible');
+    historyList.innerHTML = '';
+    for (const s of sessions) {
+      const item = document.createElement('div');
+      item.className = 'history-item';
+      item.onclick = () => loadSession(s.id);
+      item.innerHTML = `
+        <div class="history-providers">
+          ${s.providers.map(p => `<span class="history-provider-dot" data-p="${p}"></span>`).join('')}
+        </div>
+        <span class="history-question">${s.question}</span>
+        <span class="history-meta">${formatDate(s.created_at)}</span>
+      `;
+      historyList.appendChild(item);
+    }
+  } catch (e) {}
+}
+
+async function loadSession(id) {
+  try {
+    const resp = await fetch(`/api/session/${id}`);
+    const s = await resp.json();
+    if (s.error) return;
+
+    resetStages();
+    createPanels(s.providers);
+    chairmanBadge.textContent = `Chairman: ${DISPLAY_NAMES[s.chairman]}`;
+
+    // Mark all completed stages
+    const hasStage1 = s.responses.some(r => r.stage === 1);
+    const hasStage2 = s.responses.some(r => r.stage === 2);
+
+    if (hasStage1) {
+      setStage(1, 'complete');
+      for (const r of s.responses.filter(r => r.stage === 1)) {
+        setProviderStatus(r.provider, 1, 'done', r.text, r.html);
+      }
+    }
+    if (hasStage2) {
+      setStage(2, 'complete');
+      for (const r of s.responses.filter(r => r.stage === 2)) {
+        setProviderStatus(r.provider, 2, 'done', r.text, r.html);
+      }
+      // Collapse panels like during live session
+      $$('.provider-panel').forEach(p => p.classList.add('collapsed'));
+    }
+    if (s.synthesis) {
+      setStage(3, 'complete');
+      synthesisSection.classList.add('visible');
+      if (s.synthesis.html) {
+        synthesisText.innerHTML = s.synthesis.html;
+      } else {
+        synthesisText.textContent = s.synthesis.text;
+      }
+    }
+
+    stageProgress.classList.add('visible');
+    questionEl.value = s.question;
+  } catch (e) {}
+}
+
+// Load history on page load
+loadHistory();
+
+// Refresh history when a council session completes
+const origOnClose = null;
+function refreshHistoryOnClose() {
+  loadHistory();
+}
 </script>
 
 </body>

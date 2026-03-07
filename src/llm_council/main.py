@@ -9,6 +9,7 @@ from fastapi.staticfiles import StaticFiles
 
 from llm_council.council import run_council
 from llm_council.config import PROVIDERS
+from llm_council import storage
 
 app = FastAPI(title="LLM Council")
 
@@ -26,6 +27,20 @@ async def get_providers():
         {"name": p.name, "display_name": p.display_name}
         for p in PROVIDERS.values()
     ]
+
+
+@app.get("/api/history")
+async def get_history():
+    return storage.list_sessions()
+
+
+@app.get("/api/session/{session_id}")
+async def get_session(session_id: int):
+    session = storage.get_session(session_id)
+    if not session:
+        from fastapi.responses import JSONResponse
+        return JSONResponse({"error": "Not found"}, status_code=404)
+    return session
 
 
 @app.websocket("/ws")
@@ -129,6 +144,7 @@ def ensure_chrome_running():
 
 def main():
     import uvicorn
+    storage.init_db()
     ensure_chrome_running()
     print(f"Starting LLM Council at http://localhost:{PORT}")
     uvicorn.run(app, host="0.0.0.0", port=PORT)
