@@ -1,6 +1,10 @@
-# LLM Council
+# Browser LLM Council
 
-Multiple LLMs (ChatGPT, Claude, Gemini) answer your question, peer-review each other's responses, then a chairman synthesizes a final answer. All through your browser — no API keys needed.
+A browser-automated variant of [Andrej Karpathy's LLM Council](https://github.com/karpathy/llm-council). Multiple LLMs (ChatGPT, Claude, Gemini) answer your question, peer-review each other's responses, then a chairman synthesizes a final answer.
+
+The key difference: instead of using API keys, this project controls the LLMs through your browser via Playwright and Chrome DevTools Protocol. Just log in to each service once and you're ready to go.
+
+![Browser LLM Council](screenshot.jpg)
 
 ## Setup
 
@@ -41,3 +45,7 @@ If any LLM fails (cookie banner, rate limit, etc.), you'll get a **Retry/Skip** 
 - **Chrome won't connect:** Make sure no other Chrome instance is using port 9222. The Council uses its own Chrome profile so it can run alongside your normal browser.
 - **LLM not responding:** Check the tab in the Council Chrome — you may need to dismiss a cookie banner, solve a CAPTCHA, or log in.
 - **Selectors outdated:** LLM websites change their HTML frequently. Update selectors in `src/llm_council/config.py`.
+
+---
+
+Vibe-coded with [Claude Code](https://claude.ai/claude-code).
